@@ -1,0 +1,45 @@
+#####################################################
+# filter table
+*filter
+:INPUT DROP
+:FORWARD DROP
+:OUTPUT ACCEPT
+:LOoutside -
+:LOlo -
+
+#####################################################
+# related packets
+-A	INPUT --match state	--state ESTABLISHED							--jump	ACCEPT
+
+-A	INPUT --protocol icmp	--icmp-type destination-unreachable	--match state	--state RELATED	--jump	ACCEPT
+-A	INPUT --protocol icmp	--icmp-type source-quench		--match state	--state RELATED --jump	ACCEPT
+-A	INPUT --protocol icmp	--icmp-type time-exceeded		--match state	--state RELATED	--jump	ACCEPT
+
+#####################################################
+# local chains per interface selector
+
+# delete this line after install
+-A	INPUT --protocol tcp				--destination-port 22	--jump	ACCEPT
+-A	INPUT --in-interface $IF_OUTSIDE	--destination $IP_OUTSIDE	--jump	LOoutside
+-A	INPUT --in-interface lo							--jump	LOlo
+-A	INPUT									--jump	LOG	--log-prefix "DROP_INPUT "
+-A	INPUT									--jump	DROP
+
+#####################################################
+# local packets on lo0
+-A	LOlo									--jump	LOG	--log-prefix "DROP_LOlo "
+-A	LOlo									--jump	DROP
+
+#####################################################
+# local packets on IF_OUTSIDE
+-A	LOoutside --protocol tcp			--destination-port 22	--jump	ACCEPT
+
+-A	LOoutside								--jump	LOG	--log-prefix "DROP_LOoutside "
+-A	LOoutside								--jump	DROP
+
+#####################################################
+# FORWARD chain
+-A	FORWARD									--jump	LOG	--log-prefix "DROP_FORWARD "
+-A	FORWARD									--jump	DROP
+
+COMMIT
