@@ -1,0 +1,124 @@
+#!/usr/bin/perl
+use Sys::Syslog qw( :DEFAULT setlogsock);
+
+my $conffile = "iptables.conf";
+my $varfile = "iptables.conf.var";
+my $output = "/tmp/iptables.conf.tmp";
+my $prgname = "mynetfilter";
+my $version = "0.0.14";
+my $n_lines = 0;
+my $n_subst = 0;
+
+my @vars;
+
+sub logit {
+ my ($priority, $msg) = @_;
+ return 0 unless ($priority =~ /info|err|debug/);
+
+ setlogsock("unix");
+ openlog($prgname, "pid,cons", "user");
+ syslog($priority, $msg);
+ closelog();
+ return 1;
+}
+
+#Replace a string without using RegExp.
+sub str_replace {
+ my $replace_this = shift;
+ my $with_this  = shift; 
+ my $string   = shift;
+ my $length = length($string);
+ my $target = length($replace_this);
+
+ for(my $i=0; $i<$length - $target + 1; $i++) {
+	if(substr($string,$i,$target) eq $replace_this) {
+		$string = substr($string,0,$i) . $with_this . substr($string,$i+$target);
+		return $string; #Comment this if you what a global replace
+	}
+ }
+ return $string;
+}
+
+sub do_it_vars {
+ while (<VARF>) {
+  chomp;
+  push (@vars, $_);
+ }
+}
+
+sub do_it_config {
+ while (<CONF>) {
+  chomp;
+  $line = $_;
+  $n_lines++;
+  foreach $v (@vars) {
+   ($name,$value) = split(/\=/, $v);
+   if (index($line, $name) != -1) {
+    $n_subst++;
+    if (index($value, ' ') != -1) {
+     @values = split(/ /, $value);
+     $newline = "";
+     foreach $sv (@values) {
+      $newline = $newline . str_replace($name,$sv,$line) . "\n";
+     }
+     $line = $newline;
+    } else {
+     $line = str_replace($name, $value, $line);
+    }
+   }
+  }
+  print OUTF "$line\n";
+ }
+}
+
+print "Starting myNetFilter v${version}, Sitedesign.hu\n";
+logit("info", "BEGIN");
+
+if (!((getlogin() eq "root") || (getlogin() eq ""))) {
+ print " Only root can execute this program\n";
+ logit("err", " error: root privilege needed for execution");
+ exit;
+}
+
+$num_args = $#ARGV + 1;
+if ($num_args != 1) {
+ print " Usage: mynetfilter path_to_mynetfilter_config\n";
+ logit("err", " error: atleast one parameter needed (config path)");
+ exit;
+}
+
+$dir_path = $ARGV[0];
+
+open (CONF, "${dir_path}${conffile}") or die " ERROR: Unable to open config file ${dir_path}${conffile}\n";
+open (OUTF, ">$output") or die " ERROR: Unable to open output $output\n";
+
+print " Reading variables...";
+if (open(VARF, "${dir_path}${varfile}")) {
+ do_it_vars;
+ close (VARF) or die " ERROR: Unable to close var file\n";
+ print " done\n";
+ logit("info", " ".@vars." variable(s) parsed.");
+} else {
+ print " skipped\n";
+ logit("info", "ERROR: Unable to open ${dir_path}${varfile}... maybe not needed: skipping"); 
+}
+
+print " Generating netfilter rules...";
+do_it_config;
+print " done\n";
+logit("info", " Rules generated: ${n_lines} line(s) processed, ${n_subst} substitution(s) occured");
+
+close (CONF) or die " ERROR: Unable to close config file\n";
+close (OUTF) or die " ERROR: Unable to close output file\n";
+
+system("iptables-restore <$output ");
+if ($? != 0) {
+	print "Something went wrong.\n";
+} else {
+	print "done\n";
+}
+logit("err", " iptables-restore: status code: $?");
+
+unlink($output);
+logit("info", "END");
+exit;

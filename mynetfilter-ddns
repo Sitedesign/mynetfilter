@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+use Sys::Syslog qw( :DEFAULT setlogsock);
+use IO::Socket::INET;
+
+my $prgname = "mynetfilter-ddns";
+my $path = "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin";
+my $conf = "/etc/mynetfilter/ddns.conf";
+my $chain = "DDNSssh";
+
+my @domains;
+
+sub logit {
+ my ($priority, $msg) = @_;
+ return 0 unless ($priority =~ /info|err|debug/);
+
+ setlogsock("unix");
+ openlog($prgname, "pid,cons", "user");
+ syslog($priority, $msg);
+ closelog();
+ return 1;
+}
+
+sub read_domains {
+ while (<CNF>) {
+  chomp;
+  push (@domains, $_);
+ }
+}
+
+sub process {
+ foreach $v (@domains) {
+  my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($v);
+  if ($? ne 0) {
+   logit("err", "can't resolve domain: $v");
+  } else {
+   my $ip = inet_ntoa($addrs[0]);
+   system("iptables -A $chain --source $ip --jump ACCEPT");
+   if ($? == 0) {
+    logit("info", "$v => $ip added to $chain chain");
+   } else {
+    logit("err", "$v ($ip) not added to $chain (iptables error code: $?)");
+   }
+  }
+ }
+}
+
+unless (-e $conf) {
+ logit("err", "Missing configuration file");
+ exit 1;
+}
+
+# set path
+$ENV{'PATH'} = $path;
+
+# read vars
+open (CNF, "${conf}") or exit 2;
+read_domains;
+close (CNF) or exit 3;
+
+
+# flush chain
+system("iptables -F $chain");
+if ($? != 0) {
+    logit("err", "error at iptables flush");
+    exit 4;
+}
+
+process;
+
+# add return to chain
+system("iptables -A $chain --jump RETURN");
+if ($? != 0) {
+    logit("err", "error while adding return to iptables chain");
+    exit 5;
+}
+
+exit 0;
