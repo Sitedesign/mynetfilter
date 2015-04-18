@@ -1,0 +1,94 @@
+#####################################################
+# mangle table
+*mangle
+:PREROUTING ACCEPT
+:INPUT ACCEPT
+:FORWARD ACCEPT
+:OUTPUT ACCEPT
+:POSTROUTING ACCEPT
+:DIVERT -
+:PRoutside -
+
+#####################################################
+# here we deal with syn packets only
+#-A	PREROUTING --protocol tcp ! --syn								--jump	DROP
+
+#####################################################
+# PREROUTING chain per interface selector
+-A	PREROUTING --in-interface $IF_OUTSIDE	--destination $IP_OUTSIDE				--jump	PRoutside
+
+#####################################################
+# here we mark packages
+-A	PREROUTING --protocol tcp -m socket								--jump	DIVERT
+
+#####################################################
+# proxy redirects on IF_OUTSIDE
+-A	PRoutside  --protocol tcp --destination-port 80							--jump	TPROXY --tproxy-mark 0x1/0x1 --on-port 50080 --on-ip $IP_OUTSIDE
+
+#####################################################
+# DIVERT chain
+-A	DIVERT												--jump	MARK --set-mark 1
+-A	DIVERT												--jump	ACCEPT
+
+COMMIT
+
+#####################################################
+# filter table
+*filter
+:INPUT DROP
+:FORWARD DROP
+:OUTPUT ACCEPT
+:NOISE -
+:LOoutside -
+:LOlo -
+
+#####################################################
+# noise
+-A	INPUT --jump NOISE
+-A	NOISE --destination 224.0.0.0/6									--jump DROP
+-A	NOISE --destination 255.255.255.255								--jump DROP
+-A	NOISE --in-interface $IF_OUTSIDE --protocol icmp --icmp-type echo-request			--jump DROP
+-A	NOISE												--jump RETURN
+
+#####################################################
+# reject Ident requests
+-A	INPUT --protocol tcp	--destination-port 113							--jump REJECT --reject-with tcp-reset
+
+#####################################################
+# related packets
+-A	INPUT --match mark	--mark 1								--jump	ACCEPT
+-A	INPUT --match state	--state ESTABLISHED							--jump	ACCEPT
+-A	INPUT --protocol icmp	--icmp-type destination-unreachable	--match state	--state RELATED	--jump	ACCEPT
+-A	INPUT --protocol icmp	--icmp-type source-quench		--match state	--state RELATED --jump	ACCEPT
+-A	INPUT --protocol icmp	--icmp-type time-exceeded		--match state	--state RELATED	--jump	ACCEPT
+
+#####################################################
+# local chains per interface selector
+-A	INPUT --in-interface $IF_OUTSIDE	--destination $IP_OUTSIDE				--jump	LOoutside
+-A	INPUT --in-interface lo										--jump	LOlo
+-A	INPUT												--jump	LOG	--log-prefix "DROP_INPUT "
+-A	INPUT												--jump	DROP
+
+#####################################################
+# local packets on lo0
+-A	LOlo --protocol tcp				--destination-port 22				--jump	ACCEPT
+
+-A	LOlo --protocol udp				--destination-port 53				--jump	ACCEPT
+
+-A	LOlo												--jump	LOG	--log-prefix "DROP_LOlo "
+-A	LOlo												--jump	DROP
+
+#####################################################
+# local packets on IF_OUTSIDE
+-A	LOoutside --protocol tcp 			--destination-port 22				--jump	ACCEPT
+
+-A	LOoutside											--jump	LOG	--log-prefix "DROP_LOoutside "
+-A	LOoutside											--jump	DROP
+
+#####################################################
+# FORWARD chain
+-A	FORWARD												--jump	LOG	--log-prefix "DROP_FORWARD "
+-A	FORWARD												--jump	DROP
+
+COMMIT
+
