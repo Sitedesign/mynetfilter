@@ -1,0 +1,13 @@
+Source: mynetfilter
+Section: net
+Priority: extra
+Maintainer: Krisztian CSANYI <csanyi.krisztian@sitedesign.hu>
+Build-Depends: debhelper (>= 7.0.50~)
+Standards-Version: 3.9.1
+Homepage: http://www.sitedesign.hu/mynetfilter
+
+Package: mynetfilter
+Architecture: all
+Depends: ${misc:Depends}, ${perl:Depends}, iptables
+Description: Iptables management tool
+ It supports variables with multiple values.

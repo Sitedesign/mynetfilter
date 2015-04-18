@@ -1,0 +1,24 @@
+mynetfilter (0.0.14) unstable; urgency=low
+
+  * ability to enable / disable boot startup
+
+ -- Krisztian CSANYI <csanyi.krisztian@sitedesign.hu>  Wed, 24 Sep 2014 12:11:00 +0200
+
+mynetfilter (0.0.13) unstable; urgency=low
+
+  * Syslog support added.
+
+ -- Krisztian Csanyi <csanyi.krisztian@sitedesign.hu>  Mon, 07 Aug 2012 00:24:00 +0200
+
+mynetfilter (0.0.12) unstable; urgency=low
+
+  * Complete rewrite. Now its written in Perl.
+    With this performance problems solved.
+
+ -- Krisztian Csanyi <csanyi.krisztian@sitedesign.hu>  Thu, 18 Aug 2011 11:00:00 +0200
+
+mynetfilter (0.0.11) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Krisztian Csanyi <csanyi.krisztian@sitedesign.hu>  Fri, 03 Jun 2011 20:46:34 +0200

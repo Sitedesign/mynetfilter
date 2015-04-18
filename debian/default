@@ -1,0 +1,4 @@
+# This is the configuration file for /etc/init.d/mynetfilter
+
+# The path where the myNetFilter configuration is.
+CONFDIR="/etc/mynetfilter/"
