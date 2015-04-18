@@ -1,0 +1,31 @@
+.TH MYNETFILTER 8 "24/09/2014" "mynetfilter" "myNetFilter"
+.SH NAME
+mynetfilter \- framework for iptables
+.SH SYNOPSIS
+.B mynetfilter
+.I conf_dir
+.SH DESCRIPTION
+myNetFilter is an open source framework for iptables by Krisztian CSANYI. It's written in Perl and Bash - to make you easier the use and better understanding the iptables. 
+.SH FILES
+.TP
+.I /etc/default/mynetfilter
+Variables for init. It's for determine the default conf_dir.
+.TP
+.I /etc/mynetfilter/iptables.conf
+Main configuration file for mynetfilter (iptables-save output with some variables).
+.TP
+.I /etc/mynetfilter/iptables.conf.var 
+Stored variables which can be used in the main configuration.
+.TP
+.I /etc/mynetfilter/iptmods.conf
+The list of the kernel modules which have to be loaded before restoring configuration.
+.SH BUGS
+Report all bugs to the Sitedesign team <info@sitedesign.hu>
+.SH SEE ALSO
+.BR mynetfilter-ddns(8)
+.SH NOTES
+-
+.SH COPYRIGHT
+Copyright (C) 2014 Krisztian CSANYI. This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2 as published by the Free Software Foundation.
+.SH AUTHORS
+Krisztian CSANYI <csanyi.krisztian@sitedesign.hu>
